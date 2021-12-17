@@ -42,7 +42,7 @@ def mp_apply(envir, fun, shared_job_q, shared_result_q, shared_error_q, shared_h
     """
     
     procs = []
-    for i in range(nprocs):
+    for _ in range(nprocs):
         p = multiprocessing.Process(
                 target=single_worker,
                 args=(envir, fun, shared_job_q, shared_result_q, shared_error_q, shared_history_d, hostname))

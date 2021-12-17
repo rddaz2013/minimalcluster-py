@@ -15,7 +15,7 @@ def example_factorize_naive(n):
         if r == 0:
             factors.append(p)
             n = n / p
-        elif p * p >= n:
+        elif p ** 2 >= n:
             factors.append(n)
             return factors
         elif p > 2:
@@ -27,7 +27,7 @@ def example_factorize_naive(n):
 
 def make_nums(N):
     nums = [999999999999]
-    for i in range(N):
+    for _ in range(N):
         nums.append(nums[-1] + 2)
     return nums
 

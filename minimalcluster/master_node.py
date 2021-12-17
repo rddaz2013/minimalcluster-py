@@ -118,8 +118,8 @@ class MasterNode():
         self.get_envir = Queue()
         self.target_function = Queue()
         self.raw_queue_of_worker_list = Queue()
-        self.raw_dict_of_job_history = dict() # a queue to store the history of job assignment
-        
+        self.raw_dict_of_job_history = {}
+
         # Return synchronized proxies for the actual Queue objects.
         # Note that for "callable=", we don't use `lambda` which is commonly used in multiprocessing examples.
         # Instead, we use `partial()` to wrapper one more time.
@@ -146,7 +146,7 @@ class MasterNode():
         self.share_target_fun = self.manager.target_function()
         self.queue_of_worker_list = self.manager.queue_of_worker_list()
         self.dict_of_job_history = self.manager.dict_of_job_history()
-        
+
         if if_join_as_worker:
             self.join_as_worker()
 
@@ -184,12 +184,12 @@ class MasterNode():
 
         self.queue_of_worker_list.put(".") # trigger worker nodes to contact master node to show their "heartbeat"
         time.sleep(0.3) # Allow some time for collecting "heartbeat"
-        
+
         worker_list = []
         while not self.queue_of_worker_list.empty():
             worker_list.append(self.queue_of_worker_list.get())
 
-        return list(set([w for w in worker_list if w != "."]))
+        return list({w for w in worker_list if w != "."})
         
 
     def load_envir(self, source, from_file = True):
@@ -217,10 +217,9 @@ class MasterNode():
             print("[ERROR] The environment statements given can't be executed.")
             raise
 
-        if self.target_fun in locals() and isinstance(locals()[self.target_fun], FunctionType):
-            return True
-        else:
-            return False
+        return self.target_fun in locals() and isinstance(
+            locals()[self.target_fun], FunctionType
+        )
 
 
     def execute(self):
@@ -228,7 +227,7 @@ class MasterNode():
         # Ensure the error queue is empty
         clear_queue(self.shared_error_q)
 
-        if self.target_fun == None:
+        if self.target_fun is None:
             print("[ERROR] Target function is not registered yet.")
         elif not self.__check_target_function():
             print("[ERROR] The target function registered (`{}`) can't be built with the given environment statements.".format(self.target_fun))
@@ -239,7 +238,7 @@ class MasterNode():
         else:
             print("[{}] Assigning jobs to worker nodes.".format(str(datetime.datetime.now())))
 
-            
+
             self.share_envir.put(self.envir_statements)
 
             self.share_target_fun.put(self.target_fun)
@@ -247,7 +246,7 @@ class MasterNode():
             # The numbers are split into chunks. Each chunk is pushed into the job queue
             for i in range(0, len(self.args_to_share_to_workers), self.chunksize):
                 self.shared_job_q.put((i, self.args_to_share_to_workers[i:(i + self.chunksize)]))
-            
+
             # Wait until all results are ready in shared_result_q
             numresults = 0
             resultdict = {}
@@ -258,7 +257,10 @@ class MasterNode():
                     print("[{}][Warning] No valid worker node at this moment. You can wait for workers to join, or CTRL+C to cancle.".format(str(datetime.datetime.now())))
                     continue
 
-                if self.shared_job_q.empty() and sum([w[3] for w in self.list_workers()]) == 0:
+                if (
+                    self.shared_job_q.empty()
+                    and sum(w[3] for w in self.list_workers()) == 0
+                ):
                     '''
                     After all jobs are assigned and all worker nodes have finished their works,
                     check if the nodes who have un-finished jobs are sitll alive.
@@ -282,7 +284,7 @@ class MasterNode():
                 if not self.shared_error_q.empty():
                     print("[ERROR] Running error occured in remote worker node:")
                     print(self.shared_error_q.get())
-                    
+
                     clear_queue(self.shared_job_q)
                     clear_queue(self.shared_result_q)
                     clear_queue(self.share_envir)
